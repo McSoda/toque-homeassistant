@@ -165,3 +165,29 @@ async def test_auth_error_stops_stream_and_notifies(session, robot: FakeToque) -
     )
     await asyncio.wait_for(stream.run(), 5)
     assert flagged == [True]
+
+
+async def test_connection_error_messages_are_never_empty(session, robot: FakeToque) -> None:
+    # Un délai dépassé a un str() vide : le message doit quand même dire quoi et où.
+    class Slow:
+        def get(self, *args, **kwargs):
+            raise asyncio.TimeoutError
+
+    client = ToqueClient(Slow(), "192.0.2.10", 8765, TOKEN)
+    with pytest.raises(ToqueConnectionError) as excinfo:
+        await client.get_state()
+    message = str(excinfo.value)
+    assert "TimeoutError" in message and "192.0.2.10:8765/api/v1/state" in message
+
+    await robot.stop()
+    with pytest.raises(ToqueConnectionError) as excinfo:
+        await make_client(session, robot).get_state()
+    assert f"127.0.0.1:{robot.port}/api/v1/state" in str(excinfo.value)
+    assert not str(excinfo.value).startswith(":")
+
+
+async def test_http_error_message_contains_url(session, robot: FakeToque) -> None:
+    client = make_client(session, robot)
+    with pytest.raises(ToqueConnectionError) as excinfo:
+        client._raise_for_status(503, "http://x/api/v1/state")
+    assert "HTTP 503" in str(excinfo.value) and "http://x/api/v1/state" in str(excinfo.value)

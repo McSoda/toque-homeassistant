@@ -33,6 +33,13 @@ class ToqueNotFoundError(ToqueError):
     """Ressource inconnue (404)."""
 
 
+def describe_error(err: BaseException, url: str) -> str:
+    """Message lisible : `str()` d'un délai dépassé ou d'une coupure est souvent vide."""
+    detail = str(err).strip()
+    name = type(err).__name__
+    return f"{name}: {detail} ({url})" if detail else f"{name} ({url})"
+
+
 @dataclass(frozen=True)
 class SseEvent:
     """Un événement SSE complet."""
@@ -111,28 +118,29 @@ class ToqueClient:
         return headers
 
     @staticmethod
-    def _raise_for_status(status: int) -> None:
+    def _raise_for_status(status: int, url: str) -> None:
         if status == 401:
             raise ToqueAuthError("jeton refusé")
         if status == 404:
             raise ToqueNotFoundError("ressource inconnue")
         if status >= 400:
-            raise ToqueConnectionError(f"HTTP {status}")
+            raise ToqueConnectionError(f"HTTP {status} ({url})")
 
     async def _get(
         self, path: str, *, auth: bool = True, params: dict[str, Any] | None = None
     ) -> Any:
+        url = f"{self.base_url}{path}"
         try:
             async with self._session.get(
-                f"{self.base_url}{path}",
+                url,
                 headers=self._headers(auth=auth),
                 params=params,
                 timeout=aiohttp.ClientTimeout(total=self._timeout),
             ) as resp:
-                self._raise_for_status(resp.status)
+                self._raise_for_status(resp.status, url)
                 return await resp.json(content_type=None)
         except (aiohttp.ClientError, asyncio.TimeoutError, ValueError) as err:
-            raise ToqueConnectionError(str(err)) from err
+            raise ToqueConnectionError(describe_error(err, url)) from err
 
     async def get_info(self) -> dict[str, Any]:
         """``/info`` : public, sans jeton."""
@@ -161,21 +169,22 @@ class ToqueClient:
         if last_event_id is not None:
             headers["Last-Event-ID"] = last_event_id
         parser = SseParser()
+        url = f"{self.base_url}/events"
         try:
             # Maintien toutes les 15 s côté robot : 45 s de silence = liaison morte.
             async with self._session.get(
-                f"{self.base_url}/events",
+                url,
                 headers=headers,
                 timeout=aiohttp.ClientTimeout(total=None, connect=10, sock_read=45),
             ) as resp:
-                self._raise_for_status(resp.status)
+                self._raise_for_status(resp.status, url)
                 async for raw in resp.content:
                     line = raw.decode("utf-8", errors="replace").rstrip("\r\n")
                     event = parser.feed(line)
                     if event is not None:
                         yield event
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
-            raise ToqueConnectionError(str(err)) from err
+            raise ToqueConnectionError(describe_error(err, url)) from err
 
 
 class ToqueEventStream:
