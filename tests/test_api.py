@@ -191,3 +191,24 @@ async def test_http_error_message_contains_url(session, robot: FakeToque) -> Non
     with pytest.raises(ToqueConnectionError) as excinfo:
         client._raise_for_status(503, "http://x/api/v1/state")
     assert "HTTP 503" in str(excinfo.value) and "http://x/api/v1/state" in str(excinfo.value)
+
+
+async def test_silent_stream_times_out(session, robot: FakeToque) -> None:
+    robot.event_scripts = [[sse("state", {"status": "recipe"}), None]]
+    client = ToqueClient(session, "127.0.0.1", robot.port, TOKEN, stream_read_timeout=0.4)
+    received = []
+    with pytest.raises(ToqueConnectionError) as excinfo:
+        async for event in client.stream_events():
+            received.append(event.event)
+    assert received == ["state"]
+    assert "SocketTimeoutError" in str(excinfo.value)
+
+
+async def test_pings_keep_stream_alive(session, robot: FakeToque) -> None:
+    # Un commentaire `: ping` toutes les 0,2 s (délai de lecture : 0,5 s) ne doit pas couper le flux.
+    ping = b": ping\n\n"
+    robot.event_scripts = [[sse("state", {"status": "standby"}), 0.2, ping, 0.2, ping, 0.2, ping, 0.2, ping,
+                            sse("done", {"result": "finished"}, 1)]]
+    client = ToqueClient(session, "127.0.0.1", robot.port, TOKEN, stream_read_timeout=0.5)
+    events = [e.event async for e in client.stream_events()]
+    assert events == ["state", "done"]

@@ -129,6 +129,7 @@ async def test_robot_unavailable_after_two_heartbeats(hass: HomeAssistant, robot
     entry = await setup_robot(hass, robot)
     coordinator: ToqueCoordinator = entry.runtime_data
     await wait_for(hass, lambda: coordinator.stream_connected)
+    coordinator._poll_if_silent = lambda: None  # ici on teste la fenêtre, pas l'interrogation de repli
 
     now = [1000.0]
     coordinator._clock = lambda: now[0]
@@ -158,6 +159,7 @@ async def test_idle_window_is_sixty_seconds(hass: HomeAssistant, robot: FakeToqu
     entry = await setup_robot(hass, robot)
     coordinator: ToqueCoordinator = entry.runtime_data
     await wait_for(hass, lambda: coordinator.stream_connected)
+    coordinator._poll_if_silent = lambda: None  # ici on teste la fenêtre, pas l'interrogation de repli
     now = [0.0]
     coordinator._clock = lambda: now[0]
     coordinator._last_state_at = 0.0
@@ -270,3 +272,59 @@ async def test_add_recipe_to_todo(hass: HomeAssistant, robot: FakeToque) -> None
     )
     assert [c.data["item"] for c in calls] == ["potiron (800 g)", "sel"]
     assert all(c.data["entity_id"] == "todo.courses" for c in calls)
+
+
+async def test_silent_stream_triggers_fast_poll(hass: HomeAssistant, robot: FakeToque) -> None:
+    # Flux ouvert mais muet pendant un travail : on interroge /state sans attendre les 60 s.
+    robot.event_scripts = [[sse("state", robot.state), None]]
+    entry = await setup_robot(hass, robot)
+    coordinator: ToqueCoordinator = entry.runtime_data
+    await wait_for(hass, lambda: coordinator.stream_connected)
+
+    now = [1000.0]
+    coordinator._clock = lambda: now[0]
+    coordinator._last_state_at = now[0]
+
+    def state_calls() -> int:
+        return sum(1 for path, _ in robot.requests if path.endswith("/state"))
+
+    before = state_calls()
+    now[0] += 5  # encore dans la fenêtre (5 s + 1 s de marge)
+    coordinator._check_availability()
+    await hass.async_block_till_done()
+    assert state_calls() == before
+
+    now[0] += 2  # silence de 7 s > 6 s : interrogation de repli
+    coordinator._check_availability()
+    assert coordinator._poll_task is not None
+    await coordinator._poll_task
+    await hass.async_block_till_done()
+    assert state_calls() == before + 1
+    assert coordinator._last_state_at == now[0]  # l'état reçu renouvelle la disponibilité
+    assert coordinator.robot_available
+    assert state_of(hass, "sensor", "status").state == "recipe"
+
+    # Pas d'interrogation en rafale : le silence est reparti de zéro.
+    coordinator._check_availability()
+    await hass.async_block_till_done()
+    assert state_calls() == before + 1
+
+
+async def test_poll_emits_derived_action_required_once(hass: HomeAssistant, robot: FakeToque) -> None:
+    robot.session["awaiting"] = "machine"
+    entry = await setup_robot(hass, robot)
+    coordinator: ToqueCoordinator = entry.runtime_data
+    seen: list[str] = []
+    coordinator.async_add_event_listener(lambda t, d: seen.append(t))
+
+    robot.session["awaiting"] = "user"
+    await coordinator.async_refresh()
+    await coordinator.async_refresh()  # même session : pas de doublon
+    assert seen == ["action_requise"]
+
+
+async def test_first_refresh_emits_no_event(hass: HomeAssistant, robot: FakeToque) -> None:
+    # Au démarrage, une session déjà en attente d'action ne produit pas d'événement.
+    robot.session["awaiting"] = "user"
+    entry = await setup_robot(hass, robot)
+    assert state_of(hass, "event", "cooking").state == STATE_UNKNOWN

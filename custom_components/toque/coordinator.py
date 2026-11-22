@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from datetime import timedelta
 import logging
@@ -28,6 +29,7 @@ from .const import (
     HEARTBEAT_JOB_S,
     MAX_SNAPSHOT_AGE_MS,
     POLL_INTERVAL_S,
+    SILENCE_GRACE_S,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -63,6 +65,7 @@ class ToqueCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.session: dict[str, Any] = {"active": False}
         self._last_state_at: float | None = None
         self.stream_connected = False
+        self._poll_task: asyncio.Task | None = None
         self._event_listeners: list[Callable[[str, dict[str, Any]], None]] = []
         self._last_availability: tuple[bool, bool] | None = None
         self.stream = ToqueEventStream(
@@ -85,6 +88,12 @@ class ToqueCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             )
         )
         self.config_entry.async_on_unload(self.stream.stop)
+        self.config_entry.async_on_unload(self._cancel_poll)
+
+    @callback
+    def _cancel_poll(self) -> None:
+        if self._poll_task and not self._poll_task.done():
+            self._poll_task.cancel()
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Repli : interrogation de /state et /session."""
@@ -96,7 +105,9 @@ class ToqueCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         except ToqueError as err:
             raise UpdateFailed(str(err)) from err
         self._apply_state(state)
-        self._apply_session(session, emit=False)
+        # Premier chargement : pas d'événement dérivé ; ensuite le repli doit en émettre,
+        # car le flux peut être muet (les doublons sont écartés par la comparaison).
+        self._apply_session(session, emit=self.data is not None)
         return self._snapshot()
 
     # --- application des données --------------------------------------
@@ -197,7 +208,19 @@ class ToqueCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return isinstance(age, (int, float)) and 0 <= age <= MAX_SNAPSHOT_AGE_MS
 
     @callback
+    def _poll_if_silent(self) -> None:
+        """Interroge /state quand plus aucun `state` n'arrive (flux muet mais ouvert)."""
+        if self._last_state_at is None or (self._poll_task and not self._poll_task.done()):
+            return
+        heartbeat = HEARTBEAT_JOB_S if self.state.get("job") else HEARTBEAT_IDLE_S
+        if self._clock() - self._last_state_at > heartbeat + SILENCE_GRACE_S:
+            self._poll_task = self.hass.async_create_background_task(
+                self.async_refresh(), f"{DOMAIN} poll fallback"
+            )
+
+    @callback
     def _check_availability(self, _now: Any = None) -> None:
+        self._poll_if_silent()
         current = (self.robot_available, self.data_fresh)
         if current != self._last_availability:
             self._last_availability = current

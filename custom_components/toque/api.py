@@ -12,7 +12,7 @@ from urllib.parse import quote
 
 import aiohttp
 
-from .const import API_PREFIX
+from .const import API_PREFIX, STREAM_READ_TIMEOUT_S
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -99,8 +99,10 @@ class ToqueClient:
         port: int,
         token: str | None = None,
         timeout: float = 10,
+        stream_read_timeout: float = STREAM_READ_TIMEOUT_S,
     ) -> None:
         self._session = session
+        self._stream_read_timeout = stream_read_timeout
         self.host = host
         self.port = port
         self._token = token
@@ -171,11 +173,11 @@ class ToqueClient:
         parser = SseParser()
         url = f"{self.base_url}/events"
         try:
-            # Maintien toutes les 15 s côté robot : 45 s de silence = liaison morte.
+            # Maintien toutes les 15 s côté robot : un silence plus long = liaison morte.
             async with self._session.get(
                 url,
                 headers=headers,
-                timeout=aiohttp.ClientTimeout(total=None, connect=10, sock_read=45),
+                timeout=aiohttp.ClientTimeout(total=None, connect=10, sock_read=self._stream_read_timeout),
             ) as resp:
                 self._raise_for_status(resp.status, url)
                 async for raw in resp.content:

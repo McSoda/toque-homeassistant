@@ -109,7 +109,7 @@ class FakeToque:
         self.requests: list[tuple[str, dict[str, str]]] = []
         # Un élément par connexion /events : liste d'octets à envoyer ;
         # `None` en dernier = garder la connexion ouverte.
-        self.event_scripts: list[list[bytes | None]] = []
+        self.event_scripts: list[list[bytes | float | None]] = []
         self.event_connections = 0
         self.stream_headers: list[dict[str, str]] = []
         self._server: TestServer | None = None
@@ -180,5 +180,8 @@ class FakeToque:
             if chunk is None:
                 await self._closing.wait()
                 break
+            if isinstance(chunk, float):  # pause (s) entre deux envois
+                await asyncio.sleep(chunk)
+                continue
             await resp.write(chunk)
         return resp
