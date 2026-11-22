@@ -43,7 +43,8 @@ Copier le dossier `custom_components/toque` dans le dossier `custom_components` 
 ## Mise à jour des données et disponibilité
 
 - Données en **temps réel** par le flux SSE (`/events`) ; reconnexion automatique avec `Last-Event-ID` (délai 1 s, doublé
-  jusqu'à 30 s). Un flux qui n'envoie aucun octet (pings de 15 s compris) pendant **30 s** est considéré mort et rouvert.
+  jusqu'à 30 s). Un flux qui n'envoie aucun octet (pings de 15 s compris) pendant **30 s** est considéré mort et rouvert, **sans** `Last-Event-ID` : les identifiants du robot repartent de 1 à chaque redémarrage de
+  Toque, et un identifiant plus grand lui fait ignorer tous les événements.
 - `/state` et `/session` sont interrogés toutes les **60 s** en repli. Si le flux reste ouvert mais **muet** (plus de `state`
   au-delà du signal de vie du robot + 1 s : 6 s pendant un travail, 31 s sinon), l'intégration interroge `/state` sans
   attendre, puis à chaque réévaluation (toutes les 2 s) tant que le silence dure : le robot reste disponible même si son

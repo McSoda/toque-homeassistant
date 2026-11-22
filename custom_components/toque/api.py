@@ -25,6 +25,10 @@ class ToqueConnectionError(ToqueError):
     """Le robot ne répond pas (réseau, délai, 503, réponse illisible)."""
 
 
+class ToqueStreamTimeout(ToqueConnectionError):
+    """Le flux SSE est resté muet (aucun octet, pings compris) au-delà du délai de lecture."""
+
+
 class ToqueAuthError(ToqueError):
     """Jeton refusé (401)."""
 
@@ -186,7 +190,8 @@ class ToqueClient:
                     if event is not None:
                         yield event
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
-            raise ToqueConnectionError(describe_error(err, url)) from err
+            kind = ToqueStreamTimeout if isinstance(err, asyncio.TimeoutError) else ToqueConnectionError
+            raise kind(describe_error(err, url)) from err
 
 
 class ToqueEventStream:
@@ -244,6 +249,11 @@ class ToqueEventStream:
                 if self._on_auth_error:
                     self._on_auth_error()
                 return
+            except ToqueStreamTimeout as err:
+                # Flux muet : le robot a peut-être redémarré (ses identifiants repartent de 1
+                # et il ignore un Last-Event-ID plus grand). On repart sans identifiant.
+                _LOGGER.debug("Flux SSE muet, identifiant oublié (%s): %s", self.last_event_id, err)
+                self.last_event_id = None
             except ToqueError as err:
                 _LOGGER.debug("Flux SSE interrompu: %s", err)
             self._notify(False)

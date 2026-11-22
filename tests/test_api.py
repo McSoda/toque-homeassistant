@@ -212,3 +212,51 @@ async def test_pings_keep_stream_alive(session, robot: FakeToque) -> None:
     client = ToqueClient(session, "127.0.0.1", robot.port, TOKEN, stream_read_timeout=0.5)
     events = [e.event async for e in client.stream_events()]
     assert events == ["state", "done"]
+
+
+async def test_silent_stream_forgets_last_event_id(session, robot: FakeToque) -> None:
+    # Après un redémarrage du robot, ses identifiants repartent de 1 : un Last-Event-ID plus grand
+    # lui fait ignorer tous les événements. Un flux muet doit donc faire oublier l'identifiant.
+    robot.event_scripts = [
+        [sse("step", {"index": 1}, 41), None],  # puis silence : délai de lecture dépassé
+        [sse("state", {"status": "standby"}), None],
+    ]
+    client = ToqueClient(session, "127.0.0.1", robot.port, TOKEN, stream_read_timeout=0.4)
+    received: list[str] = []
+
+    async def on_event(event) -> None:
+        received.append(event.event)
+
+    async def no_sleep(_delay: float) -> None:
+        return None
+
+    stream = ToqueEventStream(client, on_event, sleep=no_sleep)
+    stream.start()
+    for _ in range(100):
+        if len(received) >= 2:
+            break
+        await asyncio.sleep(0.05)
+    await stream.stop()
+
+    assert received == ["step", "state"]
+    assert robot.stream_headers[0].get("Last-Event-ID") is None
+    assert "Last-Event-ID" not in robot.stream_headers[1]  # identifiant 41 oublié
+    assert stream.last_event_id is None
+
+
+async def test_lower_event_id_replaces_stale_one(session, robot: FakeToque) -> None:
+    robot.event_scripts = [[sse("step", {"index": 1}, 41), sse("step", {"index": 2}, 3), None]]
+    seen: list[str | None] = []
+
+    async def on_event(event) -> None:
+        seen.append(event.id)
+
+    stream = ToqueEventStream(make_client(session, robot), on_event)
+    stream.start()
+    for _ in range(100):
+        if len(seen) >= 2:
+            break
+        await asyncio.sleep(0.05)
+    await stream.stop()
+    assert seen == ["41", "3"]
+    assert stream.last_event_id == "3"  # le compteur du robot a redémarré
