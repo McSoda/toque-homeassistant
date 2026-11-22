@@ -116,7 +116,12 @@ Ce plugin vise Linux (la CI l'exécute sur Ubuntu). Sous Windows il faut de peti
 `resource` factices dans l'environnement virtuel) ; `tests/conftest.py` neutralise déjà le blocage des sockets sous Windows.
 Le jeton utilisé par les tests est factice.
 
-La CI (GitHub Actions) lance hassfest, la validation HACS (sans le contrôle des icônes `brands`) et les tests.
+La CI (GitHub Actions) lance hassfest, la validation HACS et les tests.
+
+## Images de marque
+
+Icône et logo (une toque de chef devant une maison) sont dans `custom_components/toque/brand/`, chargés directement par
+Home Assistant (2026.3 et plus). Pour les régénérer : `python tools/make_brand.py` (Pillow requis).
 
 ## Licence
 
