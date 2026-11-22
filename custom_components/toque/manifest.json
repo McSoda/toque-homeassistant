@@ -1,6 +1,7 @@
 {
   "domain": "toque",
   "name": "Toque",
+  "categories": ["appliances_cleaning.cooking"],
   "codeowners": ["@McSoda"],
   "config_flow": true,
   "documentation": "https://github.com/McSoda/toque-homeassistant",
