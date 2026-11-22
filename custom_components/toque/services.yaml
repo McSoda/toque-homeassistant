@@ -1,0 +1,54 @@
+list_recipes:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: toque
+    query:
+      selector:
+        text:
+    category:
+      selector:
+        text:
+    favorite:
+      selector:
+        boolean:
+    limit:
+      default: 50
+      selector:
+        number:
+          min: 1
+          max: 500
+    offset:
+      default: 0
+      selector:
+        number:
+          min: 0
+          mode: box
+
+get_recipe:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: toque
+    recipe_id:
+      required: true
+      selector:
+        text:
+
+add_recipe_to_todo:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: toque
+    recipe_id:
+      required: true
+      selector:
+        text:
+    todo_entity_id:
+      required: true
+      selector:
+        entity:
+          domain: todo

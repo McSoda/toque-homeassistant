@@ -1,0 +1,219 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Toque robot",
+        "description": "Robot address (Settings > Integrations > Home Assistant in Toque) and the token shown on its screen.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "token": "Token"
+        },
+        "data_description": {
+          "token": "Access token shown on the robot's screen."
+        }
+      },
+      "discovery_confirm": {
+        "title": "Toque robot discovered",
+        "description": "Toque \"{name}\" was found at {host}. Enter the token shown on the robot's screen.",
+        "data": {
+          "token": "Token"
+        },
+        "data_description": {
+          "token": "Access token shown on the robot's screen."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Token rejected",
+        "description": "The robot ({host}) rejected the token. Enter the current token shown on its screen.",
+        "data": {
+          "token": "Token"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot reach the robot. Check the address, the port and that the API is enabled in Toque.",
+      "invalid_auth": "Token rejected.",
+      "unsupported_api": "This robot uses an API version this integration does not support."
+    },
+    "abort": {
+      "already_configured": "This robot is already configured.",
+      "cannot_connect": "Cannot reach the robot. Check the address, the port and that the API is enabled in Toque.",
+      "unsupported_api": "This robot uses an API version this integration does not support.",
+      "reauth_successful": "Token updated."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "standby": "Standby",
+          "running": "Running",
+          "recipe": "Recipe",
+          "fault": "Fault"
+        }
+      },
+      "temperature": {
+        "name": "Temperature"
+      },
+      "target_temperature": {
+        "name": "Target temperature"
+      },
+      "rpm": {
+        "name": "Motor speed"
+      },
+      "speed_level": {
+        "name": "Speed level"
+      },
+      "weight": {
+        "name": "Weight"
+      },
+      "remaining_time": {
+        "name": "Time remaining"
+      },
+      "recipe": {
+        "name": "Current recipe"
+      },
+      "step_number": {
+        "name": "Step"
+      },
+      "current_step": {
+        "name": "Current step"
+      },
+      "last_manual_step": {
+        "name": "Last manual step"
+      },
+      "next_manual_step": {
+        "name": "Next manual step"
+      },
+      "recipe_count": {
+        "name": "Recipe count"
+      },
+      "uptime": {
+        "name": "Uptime"
+      },
+      "ip_address": {
+        "name": "IP address"
+      },
+      "android_version": {
+        "name": "Android version"
+      },
+      "board_firmware": {
+        "name": "Board firmware"
+      }
+    },
+    "binary_sensor": {
+      "lid_open": {
+        "name": "Lid open"
+      },
+      "bowl_present": {
+        "name": "Bowl present"
+      },
+      "motor": {
+        "name": "Motor"
+      },
+      "heater": {
+        "name": "Heater"
+      },
+      "fault": {
+        "name": "Fault"
+      },
+      "screen_on": {
+        "name": "Screen on"
+      }
+    },
+    "event": {
+      "cooking": {
+        "name": "Cooking",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "step": "New step",
+              "action_requise": "Action required",
+              "done": "Recipe done",
+              "job_done": "Job done",
+              "fault": "Fault"
+            }
+          }
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "entry_not_found": {
+      "message": "No Toque robot is configured (or the requested one was not found)."
+    },
+    "entry_ambiguous": {
+      "message": "Several Toque robots are configured: specify config_entry_id."
+    },
+    "recipe_not_found": {
+      "message": "Recipe \"{recipe_id}\" not found."
+    }
+  },
+  "services": {
+    "list_recipes": {
+      "name": "List recipes",
+      "description": "Returns the robot's recipe summaries.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Robot",
+          "description": "Config entry (optional if there is only one robot)."
+        },
+        "query": {
+          "name": "Search",
+          "description": "Text to search for."
+        },
+        "category": {
+          "name": "Category",
+          "description": "Filter by category."
+        },
+        "favorite": {
+          "name": "Favorites",
+          "description": "Favorites only."
+        },
+        "limit": {
+          "name": "Limit",
+          "description": "Maximum number of recipes."
+        },
+        "offset": {
+          "name": "Offset",
+          "description": "Number of recipes to skip."
+        }
+      }
+    },
+    "get_recipe": {
+      "name": "Get recipe",
+      "description": "Returns the details of a recipe.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Robot",
+          "description": "Config entry (optional if there is only one robot)."
+        },
+        "recipe_id": {
+          "name": "Recipe ID",
+          "description": "Recipe identifier (e.g. veloute-de-potiron)."
+        }
+      }
+    },
+    "add_recipe_to_todo": {
+      "name": "Add ingredients to a list",
+      "description": "Adds a recipe's ingredients to a shopping list.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Robot",
+          "description": "Config entry (optional if there is only one robot)."
+        },
+        "recipe_id": {
+          "name": "Recipe ID",
+          "description": "Recipe identifier (e.g. veloute-de-potiron)."
+        },
+        "todo_entity_id": {
+          "name": "List",
+          "description": "Todo entity that receives the ingredients."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,219 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Robot Toque",
+        "description": "Adresse du robot (Réglages › Intégrations › Home Assistant dans Toque) et jeton affiché sur son écran.",
+        "data": {
+          "host": "Hôte",
+          "port": "Port",
+          "token": "Jeton"
+        },
+        "data_description": {
+          "token": "Jeton d’accès affiché sur l’écran du robot."
+        }
+      },
+      "discovery_confirm": {
+        "title": "Robot Toque découvert",
+        "description": "Toque « {name} » a été trouvé à l’adresse {host}. Saisissez le jeton affiché sur l’écran du robot.",
+        "data": {
+          "token": "Jeton"
+        },
+        "data_description": {
+          "token": "Jeton d’accès affiché sur l’écran du robot."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Jeton refusé",
+        "description": "Le robot ({host}) a refusé le jeton. Saisissez le jeton actuel affiché sur son écran.",
+        "data": {
+          "token": "Jeton"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossible de joindre le robot. Vérifiez l’adresse, le port et que l’API est activée dans Toque.",
+      "invalid_auth": "Jeton refusé.",
+      "unsupported_api": "Ce robot utilise une version d’API non gérée par cette intégration."
+    },
+    "abort": {
+      "already_configured": "Ce robot est déjà configuré.",
+      "cannot_connect": "Impossible de joindre le robot. Vérifiez l’adresse, le port et que l’API est activée dans Toque.",
+      "unsupported_api": "Ce robot utilise une version d’API non gérée par cette intégration.",
+      "reauth_successful": "Jeton mis à jour."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "État",
+        "state": {
+          "standby": "Veille",
+          "running": "En marche",
+          "recipe": "Recette",
+          "fault": "Défaut"
+        }
+      },
+      "temperature": {
+        "name": "Température"
+      },
+      "target_temperature": {
+        "name": "Consigne de température"
+      },
+      "rpm": {
+        "name": "Régime"
+      },
+      "speed_level": {
+        "name": "Niveau de vitesse"
+      },
+      "weight": {
+        "name": "Poids"
+      },
+      "remaining_time": {
+        "name": "Temps restant"
+      },
+      "recipe": {
+        "name": "Recette en cours"
+      },
+      "step_number": {
+        "name": "Étape"
+      },
+      "current_step": {
+        "name": "Étape en cours"
+      },
+      "last_manual_step": {
+        "name": "Dernière étape manuelle"
+      },
+      "next_manual_step": {
+        "name": "Prochaine étape manuelle"
+      },
+      "recipe_count": {
+        "name": "Nombre de recettes"
+      },
+      "uptime": {
+        "name": "Durée de fonctionnement"
+      },
+      "ip_address": {
+        "name": "Adresse IP"
+      },
+      "android_version": {
+        "name": "Version d’Android"
+      },
+      "board_firmware": {
+        "name": "Firmware de la carte"
+      }
+    },
+    "binary_sensor": {
+      "lid_open": {
+        "name": "Couvercle ouvert"
+      },
+      "bowl_present": {
+        "name": "Bol présent"
+      },
+      "motor": {
+        "name": "Moteur"
+      },
+      "heater": {
+        "name": "Chauffe"
+      },
+      "fault": {
+        "name": "Défaut"
+      },
+      "screen_on": {
+        "name": "Écran allumé"
+      }
+    },
+    "event": {
+      "cooking": {
+        "name": "Cuisine",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "step": "Nouvelle étape",
+              "action_requise": "Action requise",
+              "done": "Recette terminée",
+              "job_done": "Travail terminé",
+              "fault": "Défaut"
+            }
+          }
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "entry_not_found": {
+      "message": "Aucun robot Toque configuré (ou celui demandé est introuvable)."
+    },
+    "entry_ambiguous": {
+      "message": "Plusieurs robots Toque sont configurés : précisez config_entry_id."
+    },
+    "recipe_not_found": {
+      "message": "Recette « {recipe_id} » inconnue."
+    }
+  },
+  "services": {
+    "list_recipes": {
+      "name": "Lister les recettes",
+      "description": "Renvoie les résumés de recettes du robot.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Robot",
+          "description": "Entrée de configuration (facultative s’il n’y a qu’un robot)."
+        },
+        "query": {
+          "name": "Recherche",
+          "description": "Texte recherché."
+        },
+        "category": {
+          "name": "Catégorie",
+          "description": "Filtrer par catégorie."
+        },
+        "favorite": {
+          "name": "Favorites",
+          "description": "Seulement les favorites."
+        },
+        "limit": {
+          "name": "Limite",
+          "description": "Nombre maximal de recettes."
+        },
+        "offset": {
+          "name": "Décalage",
+          "description": "Nombre de recettes à sauter."
+        }
+      }
+    },
+    "get_recipe": {
+      "name": "Lire une recette",
+      "description": "Renvoie le détail d’une recette.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Robot",
+          "description": "Entrée de configuration (facultative s’il n’y a qu’un robot)."
+        },
+        "recipe_id": {
+          "name": "Identifiant de recette",
+          "description": "Identifiant de la recette (ex. veloute-de-potiron)."
+        }
+      }
+    },
+    "add_recipe_to_todo": {
+      "name": "Ajouter les ingrédients à une liste",
+      "description": "Ajoute les ingrédients d’une recette à une liste de courses.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Robot",
+          "description": "Entrée de configuration (facultative s’il n’y a qu’un robot)."
+        },
+        "recipe_id": {
+          "name": "Identifiant de recette",
+          "description": "Identifiant de la recette (ex. veloute-de-potiron)."
+        },
+        "todo_entity_id": {
+          "name": "Liste",
+          "description": "Entité todo qui reçoit les ingrédients."
+        }
+      }
+    }
+  }
+}
