@@ -1,15 +1,22 @@
 # Toque pour Home Assistant
 
-Intégration personnalisée (compatible [HACS](https://hacs.xyz)) pour [Toque](https://github.com/McSoda/MrCuisineVibeConnect),
-l'application qui remplace celle du robot **Lidl Monsieur Cuisine Connect (SKMC 1200)**.
-Elle lit l'API locale de Toque (HTTP + SSE, **lecture seule**) : elle ne pilote ni le moteur, ni la chauffe,
-ni la session de cuisson.
+Intégration personnalisée (compatible [HACS](https://hacs.xyz)) pour **Toque**, l'application qui remplace celle du robot
+**Lidl Monsieur Cuisine Connect (SKMC 1200)**. Toque est le projet de
+[Wuki60](https://github.com/Wuki60/MrCuisineVibeConnect) ; cette intégration lit son API locale (HTTP + SSE,
+**lecture seule**) : elle ne pilote ni le moteur, ni la chauffe, ni la session de cuisson.
 
-*English: custom Home Assistant integration for the Toque app running on the Monsieur Cuisine Connect robot. Local push, read-only. The documentation below is in French; entity names and UI are translated in English too.*
+> **À lire d'abord : cette intégration ne fonctionne, pour l'instant, qu'avec le fork de développement
+> [McSoda/MrCuisineVibeConnect](https://github.com/McSoda/MrCuisineVibeConnect).**
+> L'API locale pour Home Assistant (`/api/v1`, annonce mDNS `_toque._tcp`) y a été ajoutée ; elle n'existe pas dans le
+> dépôt de Wuki60. Avec la version de Toque de Wuki60, l'intégration ne trouvera rien à lire. Le but est de proposer ces
+> modifications à Wuki60 par une *pull request* ; une fois fusionnées, l'intégration fonctionnera avec Toque « officiel »
+> et cette mention disparaîtra. Les évolutions de l'API sont décrites dans `docs/HOME_ASSISTANT_API.md` du fork.
+
+*English: custom Home Assistant integration for the Toque app (by [Wuki60](https://github.com/Wuki60/MrCuisineVibeConnect)) running on the Monsieur Cuisine Connect robot. Local push, read-only. **For now it only works with the development fork [McSoda/MrCuisineVibeConnect](https://github.com/McSoda/MrCuisineVibeConnect)**, which adds the local API; a pull request to the upstream project is planned. The documentation below is in French; entity names and UI are translated in English too.*
 
 ## Prérequis
 
-- Toque installé sur le robot, avec **Réglages › Intégrations › Home Assistant** activé : l'écran du robot affiche
+- Toque **du fork [McSoda/MrCuisineVibeConnect](https://github.com/McSoda/MrCuisineVibeConnect)** installé sur le robot, avec **Réglages › Intégrations › Home Assistant** activé : l'écran du robot affiche
   le **port** (8765 par défaut) et le **jeton**.
 - Home Assistant **2026.10** ou plus récent (version sur laquelle les tests ont été exécutés).
 - Le robot et Home Assistant sur le même réseau local.
