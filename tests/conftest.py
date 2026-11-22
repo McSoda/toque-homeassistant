@@ -20,7 +20,7 @@ def auto_enable_custom_integrations(enable_custom_integrations):
 
 
 @pytest.fixture
-async def robot() -> AsyncIterator[FakeToque]:
+async def robot(socket_enabled) -> AsyncIterator[FakeToque]:
     server = FakeToque()
     await server.start()
     yield server

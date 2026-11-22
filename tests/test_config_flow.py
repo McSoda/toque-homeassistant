@@ -89,7 +89,7 @@ async def test_zeroconf_flow(hass: HomeAssistant, robot: FakeToque, monkeypatch)
     assert ok["data"][CONF_PORT] == robot.port
 
 
-async def test_zeroconf_unreachable_aborts(hass: HomeAssistant) -> None:
+async def test_zeroconf_unreachable_aborts(hass: HomeAssistant, socket_enabled) -> None:
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_ZEROCONF}, data=zeroconf("127.0.0.1", 1)
     )
