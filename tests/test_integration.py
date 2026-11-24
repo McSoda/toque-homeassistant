@@ -328,3 +328,15 @@ async def test_first_refresh_emits_no_event(hass: HomeAssistant, robot: FakeToqu
     robot.session["awaiting"] = "user"
     entry = await setup_robot(hass, robot)
     assert state_of(hass, "event", "cooking").state == STATE_UNKNOWN
+
+
+async def test_temperature_zero_is_unknown(hass: HomeAssistant, robot: FakeToque) -> None:
+    # Le SKMC 1200 renvoie 0 sous ~37 °C (plancher de la sonde) : ce n'est pas une mesure.
+    robot.state["machine"]["tempC"] = 0
+    entry = await setup_robot(hass, robot)
+    assert state_of(hass, "sensor", "temperature").state == STATE_UNKNOWN
+    # La consigne, elle, garde sa valeur brute (0 = pas de chauffe demandée).
+    robot.state["machine"]["tempC"] = 37
+    await entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+    assert state_of(hass, "sensor", "temperature").state == "37"

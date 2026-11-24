@@ -37,6 +37,16 @@ def _truncate(text: Any) -> str | None:
     return text if len(text) <= STATE_MAX else text[: STATE_MAX - 1] + "…"
 
 
+def _temperature(c: ToqueCoordinator) -> Any:
+    """Température mesurée ; inconnue quand la base renvoie 0.
+
+    Le SKMC 1200 renvoie 0 tant que le contenu est sous 37 °C (plancher de la sonde) :
+    ce n'est pas une mesure, afficher « 0 °C » pour une eau froide serait trompeur.
+    """
+    value = dig(c.state, "machine", "tempC")
+    return None if value == 0 else value
+
+
 def _step_count(c: ToqueCoordinator) -> str | None:
     s = c.session
     if not s.get("active") or s.get("stepIndex") is None or not s.get("stepCount"):
@@ -71,7 +81,7 @@ SENSORS: tuple[ToqueSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         state_class=SensorStateClass.MEASUREMENT,
         needs_fresh=True,
-        value_fn=lambda c: dig(c.state, "machine", "tempC"),
+        value_fn=_temperature,
     ),
     ToqueSensorDescription(
         key="target_temperature",

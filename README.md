@@ -16,7 +16,10 @@ Intégration personnalisée (compatible [HACS](https://hacs.xyz)) pour **Toque**
 
 ## Prérequis
 
-- Toque **du fork [McSoda/MrCuisineVibeConnect](https://github.com/McSoda/MrCuisineVibeConnect)** installé sur le robot, avec **Réglages › Intégrations › Home Assistant** activé : l'écran du robot affiche
+- Toque **du fork [McSoda/MrCuisineVibeConnect](https://github.com/McSoda/MrCuisineVibeConnect)** installé sur le robot : la
+  version la plus récente qui porte l'API est sur la branche `mc-0.8` (Toque 0.8.2.1, basée sur la 0.8.2 de Wuki60).
+  L'API est en version 1 depuis la 0.5.x ; les versions 0.5.12 et suivantes sont conseillées (flux d'événements fiabilisé),
+  avec **Réglages › Intégrations › Home Assistant** activé : l'écran du robot affiche
   le **port** (8765 par défaut) et le **jeton**.
 - Home Assistant **2026.10** ou plus récent (version sur laquelle les tests ont été exécutés).
 - Le robot et Home Assistant sur le même réseau local.
@@ -76,6 +79,12 @@ Un appareil par robot (`sw_version` = version de Toque, `model` = SKMC 1200, `hw
 | `event` Cuisine : `step`, `action_requise`, `done`, `job_done`, `fault` | `/events` |
 | Diagnostic (inactifs par défaut) : Nombre de recettes, Durée de fonctionnement, Adresse IP, Version d'Android, Firmware de la carte | `/info` |
 
+- **Température** : `unknown` quand le robot renvoie 0. Sa sonde ne mesure rien en dessous de 37 °C environ et renvoie alors 0 :
+  ce n'est pas une température. Elle suit la mesure dès que le contenu dépasse ce seuil.
+- **Consigne de température** : la température que **Toque demande** pour le travail en cours (par exemple 95 °C pour une
+  étape à 95 °C), 0 sans chauffe ni travail. Ce n'est pas l'écho de la base : avant ce comportement, le robot renvoyait une consigne
+  ajustée pendant la montée (103 puis 97 °C pour 95 °C demandés, observé sur un robot de développement).
+
 Les attributs `ingredients` et `text` sont exclus de l'enregistreur (recorder).
 
 « Veille » côté utilisateur = `État = standby` **et** `Écran allumé = off`.
@@ -98,7 +107,11 @@ des choix faits faute de précision, à confirmer.
 - **Vitesse (tr/min).** La spec liste « Vitesse (tr/min) » mais précise que `rpm` et `speed` restent à 0 moteur en marche
   sur le SKMC 1200. L'intégration expose donc `rpm` (Régime) **et** `targetSpeed` (Niveau de vitesse) ; ce dernier est le
   fiable pour l'instant.
-- **Température.** La spec n'a pas relevé le comportement de `tempC` pendant une vraie chauffe ; vérifier sur le robot.
+- **Température.** Constaté sur un SKMC 1200 : `tempC` vaut 0 sous environ 37 °C puis suit la mesure pendant la chauffe (de
+  37 à 95 °C observés, par paliers de 5 °C au-delà de 65 °C). L'intégration traduit ce 0 en `unknown`.
+- **Robot Smart.** Toque 0.8 prend en charge le Monsieur Cuisine Smart (SKMS 1200), mais l'API annonce encore le modèle
+  « SKMC 1200 » par défaut ; l'intégration affiche le modèle reçu. Non testé : je n'ai pas de robot Smart, on ne sait pas
+  quelles mesures (`rpm`, `tempC`) il renvoie.
 - **`action_requise`.** Le tableau des entités le cite, mais le flux SSE n'a pas d'événement de ce nom. Il est **déduit** de
   `session` : émis quand `awaiting` passe à `user` (ou que l'étape change alors que `awaiting` vaut `user`).
 - **Fraîcheur.** `snapshotAgeMs` est évalué à la réception du `state`, il n'est pas augmenté du temps écoulé depuis ; le
