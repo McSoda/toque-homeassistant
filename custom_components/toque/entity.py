@@ -20,6 +20,13 @@ def dig(data: dict[str, Any] | None, *keys: str) -> Any:
     return data
 
 
+def firmware_label(firmware: Any) -> str | None:
+    """Version matérielle à afficher ; None si absente ou nulle."""
+    if firmware in (None, "", 0, "0"):
+        return None
+    return str(firmware)
+
+
 class ToqueEntity(CoordinatorEntity[ToqueCoordinator]):
     """Entité rattachée à l'appareil du robot.
 
@@ -42,11 +49,8 @@ class ToqueEntity(CoordinatorEntity[ToqueCoordinator]):
             manufacturer="Lidl / Toque",
             model=info.get("model") or "SKMC 1200",
             sw_version=dig(info, "toque", "version"),
-            hw_version=(
-                str(dig(info, "board", "firmware"))
-                if dig(info, "board", "firmware") is not None
-                else None
-            ),
+            # 0 = firmware inconnu (le robot ne le renseigne pas) : on n'affiche rien.
+            hw_version=firmware_label(dig(info, "board", "firmware")),
             configuration_url=f"http://{coordinator.client.host}:{coordinator.client.port}/api/v1/info",
         )
 

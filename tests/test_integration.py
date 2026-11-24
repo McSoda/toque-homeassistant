@@ -340,3 +340,13 @@ async def test_temperature_zero_is_unknown(hass: HomeAssistant, robot: FakeToque
     await entry.runtime_data.async_refresh()
     await hass.async_block_till_done()
     assert state_of(hass, "sensor", "temperature").state == "37"
+
+
+async def test_hw_version_hidden_when_firmware_is_zero(hass: HomeAssistant, robot: FakeToque) -> None:
+    from homeassistant.helpers import device_registry as dr
+
+    robot.info["board"]["firmware"] = 0
+    entry = await setup_robot(hass, robot)
+    device = dr.async_get(hass).async_get_device_by_identifier((DOMAIN, "toque-test0001"), entry.entry_id)
+    assert device.hw_version is None
+    assert device.sw_version == "0.5.5"
