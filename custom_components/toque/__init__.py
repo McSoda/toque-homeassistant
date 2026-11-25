@@ -26,7 +26,7 @@ from .coordinator import ToqueConfigEntry, ToqueCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.EVENT]
+PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.EVENT, Platform.IMAGE]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 

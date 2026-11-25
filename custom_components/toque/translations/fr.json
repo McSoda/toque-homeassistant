@@ -73,11 +73,137 @@
       "remaining_time": {
         "name": "Temps restant"
       },
+      "expected_end": {
+        "name": "Fin prévue"
+      },
+      "job_state": {
+        "name": "État du travail",
+        "state": {
+          "starting": "Démarrage",
+          "running": "En marche",
+          "stopping": "Arrêt en cours",
+          "paused": "En pause",
+          "finished": "Terminé",
+          "aborted": "Arrêté"
+        },
+        "state_attributes": {
+          "kind": {
+            "name": "Type de travail",
+            "state": {
+              "manual": "Cuisson manuelle",
+              "knead": "Pétrir",
+              "steam": "Vapeur",
+              "toast": "Rissoler",
+              "turbo": "Turbo",
+              "program": "Programme"
+            }
+          },
+          "label": {
+            "name": "Libellé"
+          },
+          "pause_reason": {
+            "name": "Motif de la pause",
+            "state": {
+              "user": "En pause",
+              "lid": "Couvercle ouvert",
+              "safety": "Interrompu par sécurité"
+            }
+          },
+          "phase": {
+            "name": "Phase"
+          },
+          "phase_count": {
+            "name": "Nombre de phases"
+          },
+          "reverse": {
+            "name": "Sens inverse"
+          },
+          "accessory": {
+            "name": "Accessoire",
+            "state": {
+              "blade": "Lame",
+              "whisk": "Fouet"
+            }
+          }
+        }
+      },
+      "job_elapsed_time": {
+        "name": "Temps écoulé"
+      },
+      "job_total_time": {
+        "name": "Durée du travail"
+      },
       "recipe": {
         "name": "Recette en cours"
       },
       "step_number": {
-        "name": "Étape"
+        "name": "Étape",
+        "state_attributes": {
+          "done_steps": {
+            "name": "Étapes terminées"
+          }
+        }
+      },
+      "step_kind": {
+        "name": "Type d’étape",
+        "state": {
+          "manual": "Manuelle",
+          "machine": "Machine"
+        }
+      },
+      "awaiting": {
+        "name": "Attente",
+        "state": {
+          "user": "Vous",
+          "machine": "Le robot"
+        }
+      },
+      "step_program": {
+        "name": "Programme de l’étape",
+        "state": {
+          "manuel": "Manuel",
+          "petrir": "Pétrir",
+          "vapeur": "Vapeur",
+          "rissoler": "Rissoler",
+          "turbo": "Turbo",
+          "mixer": "Mixer",
+          "smoothie": "Smoothie",
+          "sous-vide": "Sous vide",
+          "mijoter": "Mijoter",
+          "fermenter": "Fermenter"
+        },
+        "state_attributes": {
+          "reverse": {
+            "name": "Sens inverse"
+          },
+          "accessory": {
+            "name": "Accessoire",
+            "state": {
+              "blade": "Lame",
+              "whisk": "Fouet"
+            }
+          },
+          "pulses": {
+            "name": "Impulsions"
+          }
+        }
+      },
+      "step_duration": {
+        "name": "Durée de l’étape"
+      },
+      "step_speed": {
+        "name": "Vitesse de l’étape"
+      },
+      "step_temperature": {
+        "name": "Température de l’étape"
+      },
+      "step_weight": {
+        "name": "Poids à peser",
+        "state_attributes": {
+          "label": {
+            "name": "Ingrédient"
+          }
+        }
       },
       "current_step": {
         "name": "Étape en cours"
@@ -138,6 +264,11 @@
             }
           }
         }
+      }
+    },
+    "image": {
+      "recipe_image": {
+        "name": "Image de la recette"
       }
     }
   },

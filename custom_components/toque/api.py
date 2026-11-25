@@ -25,6 +25,14 @@ class ToqueConnectionError(ToqueError):
     """Le robot ne répond pas (réseau, délai, 503, réponse illisible)."""
 
 
+class ToqueBusyError(ToqueConnectionError):
+    """Le robot refuse pour l'instant (503) ; réessayer après ``retry_after`` secondes."""
+
+    def __init__(self, message: str, retry_after: float | None = None) -> None:
+        super().__init__(message)
+        self.retry_after = retry_after
+
+
 class ToqueStreamTimeout(ToqueConnectionError):
     """Le flux SSE est resté muet (aucun octet, pings compris) au-delà du délai de lecture."""
 
@@ -42,6 +50,23 @@ def describe_error(err: BaseException, url: str) -> str:
     detail = str(err).strip()
     name = type(err).__name__
     return f"{name}: {detail} ({url})" if detail else f"{name} ({url})"
+
+
+def _retry_after(value: str | None) -> float | None:
+    try:
+        seconds = float(value) if value is not None else None
+    except ValueError:
+        return None
+    return seconds if seconds is not None and seconds > 0 else None
+
+
+@dataclass(frozen=True)
+class RecipeImage:
+    """Image d'une recette telle que le robot l'a en cache."""
+
+    content: bytes
+    content_type: str
+    etag: str | None = None
 
 
 @dataclass(frozen=True)
@@ -165,6 +190,36 @@ class ToqueClient:
 
     async def get_recipe(self, recipe_id: str) -> dict[str, Any]:
         return await self._get(f"/recipes/{quote(recipe_id, safe='')}")
+
+    async def get_recipe_image(
+        self, recipe_id: str, etag: str | None = None
+    ) -> RecipeImage | None:
+        """``/recipes/{id}/image`` ; ``None`` si l'image n'a pas changé depuis ``etag`` (304).
+
+        Le robot répond 404 si l'image n'est pas en cache et 503 pendant un programme.
+        """
+        url = f"{self.base_url}/recipes/{quote(recipe_id, safe='')}/image"
+        headers = self._headers()
+        headers["Accept"] = "image/*"
+        if etag:
+            headers["If-None-Match"] = etag
+        try:
+            async with self._session.get(
+                url, headers=headers, timeout=aiohttp.ClientTimeout(total=self._timeout)
+            ) as resp:
+                if resp.status == 304 and etag:
+                    return None
+                if resp.status == 503:
+                    raise ToqueBusyError(
+                        f"HTTP 503 ({url})", _retry_after(resp.headers.get("Retry-After"))
+                    )
+                self._raise_for_status(resp.status, url)
+                content = await resp.read()
+                if resp.status != 200 or not resp.content_type.startswith("image/") or not content:
+                    raise ToqueConnectionError(f"réponse sans image ({url})")
+                return RecipeImage(content, resp.content_type, resp.headers.get("ETag"))
+        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+            raise ToqueConnectionError(describe_error(err, url)) from err
 
     async def stream_events(
         self, last_event_id: str | None = None

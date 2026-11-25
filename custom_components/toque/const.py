@@ -26,6 +26,19 @@ SILENCE_GRACE_S = 1
 # occupe une place sur le robot, limité à 8).
 STREAM_READ_TIMEOUT_S = 30
 
+# États d'un travail pendant lesquels le temps s'écoule (`job.state`, en minuscules).
+JOB_RUNNING_STATES = ("starting", "running")
+# La fin prévue reste figée tant que la nouvelle estimation ne s'en écarte pas davantage
+# (`remainingS` est tronqué à la seconde et chaque `state` arrive avec un retard variable).
+JOB_END_TOLERANCE_S = 5
+
+# Image de la recette : délai avant nouvel essai après un 503 sans `Retry-After`, après une
+# autre erreur, et délai minimal avant de redemander quand le catalogue change
+# (une synchronisation publie un événement `recipes` à chaque modification).
+IMAGE_BUSY_RETRY_S = 5
+IMAGE_ERROR_RETRY_S = 60
+IMAGE_REFRESH_MIN_S = 60
+
 EVENT_TYPES = ["step", "action_requise", "done", "job_done", "fault"]
 
 SERVICE_LIST_RECIPES = "list_recipes"
