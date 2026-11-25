@@ -76,6 +76,7 @@ SESSION: dict[str, Any] = {
              "weigh": {"label": "Crème", "grams": 200}},
     "lastManual": {"index": 0, "text": "Éplucher et couper le potiron."},
     "nextManual": {"index": 5, "text": "x" * 300},
+    "doneSteps": [1],
     "ingredients": [{"group": "", "items": [{"qty": "800", "unit": "g", "name": "potiron", "note": ""}]}],
     "startedAt": 1763699000,
 }
@@ -89,7 +90,11 @@ RECIPE: dict[str, Any] = {
             {"qty": "", "unit": "", "name": "sel", "note": ""},
         ]}
     ],
+    "imageUrl": "/api/v1/recipes/veloute-de-potiron/image",
 }
+
+# Quelques octets suffisent : l'intégration ne décode pas l'image.
+IMAGE = b"\xff\xd8\xff\xe0image-factice"
 
 
 def sse(event: str, data: Any, event_id: int | None = None) -> bytes:
@@ -105,6 +110,13 @@ class FakeToque:
         self.state = copy.deepcopy(STATE)
         self.session = copy.deepcopy(SESSION)
         self.recipe = copy.deepcopy(RECIPE)
+        # Image en cache sur le robot (None : absente) et son ETag.
+        self.image: bytes | None = IMAGE
+        self.image_etag = '"18-1763000000"'
+        # Nombre de réponses 503 à donner avant de servir l'image.
+        self.image_busy = 0
+        self.retry_after: str | None = "5"
+        self.image_statuses: list[int] = []
         self.token = TOKEN
         self.requests: list[tuple[str, dict[str, str]]] = []
         # Un élément par connexion /events : liste d'octets à envoyer ;
@@ -130,6 +142,7 @@ class FakeToque:
             lambda r: {"rev": 7, "total": 1, "recipes": [{"id": "veloute-de-potiron", "title": "Velouté de potiron"}]}
         ))
         app.router.add_get(f"{base}/recipes/{{rid}}", self._recipe)
+        app.router.add_get(f"{base}/recipes/{{rid}}/image", self._image)
         app.router.add_get(f"{base}/events", self._events)
         self._server = TestServer(app, host="127.0.0.1")
         await self._server.start_server()
@@ -165,6 +178,27 @@ class FakeToque:
         if request.match_info["rid"] != self.recipe["id"]:
             return web.json_response({"error": "not_found"}, status=404)
         return web.json_response(self.recipe)
+
+    async def _image(self, request: web.Request) -> web.Response:
+        """Comme le robot : 404 si absente, puis 503 pendant un programme, puis ETag."""
+        self._log(request)
+        response = self._image_response(request)
+        self.image_statuses.append(response.status)
+        return response
+
+    def _image_response(self, request: web.Request) -> web.Response:
+        if not self._authorized(request):
+            return web.json_response({"error": "unauthorized"}, status=401)
+        if request.match_info["rid"] != self.recipe["id"] or self.image is None:
+            return web.json_response({"error": "no_image"}, status=404)
+        if self.image_busy > 0:
+            self.image_busy -= 1
+            headers = {"Retry-After": self.retry_after} if self.retry_after else {}
+            return web.json_response({"error": "busy"}, status=503, headers=headers)
+        headers = {"ETag": self.image_etag, "Cache-Control": "max-age=86400"}
+        if request.headers.get("If-None-Match") == self.image_etag:
+            return web.Response(status=304, headers=headers)
+        return web.Response(body=self.image, content_type="image/jpeg", headers=headers)
 
     async def _events(self, request: web.Request) -> web.StreamResponse:
         self._log(request)

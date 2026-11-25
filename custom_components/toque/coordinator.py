@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
-from datetime import timedelta
+from datetime import datetime, timedelta
 import logging
 import time
 from typing import Any
@@ -14,6 +14,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .api import (
     SseEvent,
@@ -27,6 +28,8 @@ from .const import (
     DOMAIN,
     HEARTBEAT_IDLE_S,
     HEARTBEAT_JOB_S,
+    JOB_END_TOLERANCE_S,
+    JOB_RUNNING_STATES,
     MAX_SNAPSHOT_AGE_MS,
     POLL_INTERVAL_S,
     SILENCE_GRACE_S,
@@ -63,6 +66,9 @@ class ToqueCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._clock = clock
         self.state: dict[str, Any] = {}
         self.session: dict[str, Any] = {"active": False}
+        # Fin prévue du travail en cours, figée tant que les estimations concordent.
+        self.job_end: datetime | None = None
+        self._utcnow: Callable[[], datetime] = dt_util.utcnow
         self._last_state_at: float | None = None
         self.stream_connected = False
         self._poll_task: asyncio.Task | None = None
@@ -118,6 +124,27 @@ class ToqueCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def _apply_state(self, state: dict[str, Any]) -> None:
         self.state = state
         self._last_state_at = self._clock()
+        self._update_job_end(state)
+
+    def _update_job_end(self, state: dict[str, Any]) -> None:
+        """Estime la fin du travail à la réception d'un `state` (jamais entre deux)."""
+        job = state.get("job") or {}
+        remaining = job.get("remainingS")
+        if (
+            str(job.get("state") or "").lower() not in JOB_RUNNING_STATES
+            or not isinstance(remaining, (int, float))
+            or remaining <= 0
+        ):
+            self.job_end = None
+            return
+        age = state.get("snapshotAgeMs")
+        age_ms = age if isinstance(age, (int, float)) and age > 0 else 0
+        # `remainingS` date de l'instantané de la base, pas de maintenant.
+        estimate = self._utcnow() + timedelta(seconds=remaining, milliseconds=-age_ms)
+        if self.job_end is None or abs(estimate - self.job_end) > timedelta(
+            seconds=JOB_END_TOLERANCE_S
+        ):
+            self.job_end = estimate.replace(microsecond=0)
 
     def _apply_session(self, session: dict[str, Any], *, emit: bool) -> None:
         previous = self.session

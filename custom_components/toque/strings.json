@@ -73,11 +73,137 @@
       "remaining_time": {
         "name": "Time remaining"
       },
+      "expected_end": {
+        "name": "Expected end"
+      },
+      "job_state": {
+        "name": "Job state",
+        "state": {
+          "starting": "Starting",
+          "running": "Running",
+          "stopping": "Stopping",
+          "paused": "Paused",
+          "finished": "Finished",
+          "aborted": "Stopped"
+        },
+        "state_attributes": {
+          "kind": {
+            "name": "Job type",
+            "state": {
+              "manual": "Manual cooking",
+              "knead": "Knead",
+              "steam": "Steam",
+              "toast": "Brown",
+              "turbo": "Turbo",
+              "program": "Program"
+            }
+          },
+          "label": {
+            "name": "Label"
+          },
+          "pause_reason": {
+            "name": "Pause reason",
+            "state": {
+              "user": "Paused",
+              "lid": "Lid open",
+              "safety": "Safety stop"
+            }
+          },
+          "phase": {
+            "name": "Phase"
+          },
+          "phase_count": {
+            "name": "Phase count"
+          },
+          "reverse": {
+            "name": "Reverse"
+          },
+          "accessory": {
+            "name": "Accessory",
+            "state": {
+              "blade": "Blade",
+              "whisk": "Whisk"
+            }
+          }
+        }
+      },
+      "job_elapsed_time": {
+        "name": "Time elapsed"
+      },
+      "job_total_time": {
+        "name": "Job duration"
+      },
       "recipe": {
         "name": "Current recipe"
       },
       "step_number": {
-        "name": "Step"
+        "name": "Step",
+        "state_attributes": {
+          "done_steps": {
+            "name": "Completed steps"
+          }
+        }
+      },
+      "step_kind": {
+        "name": "Step type",
+        "state": {
+          "manual": "Manual",
+          "machine": "Machine"
+        }
+      },
+      "awaiting": {
+        "name": "Waiting for",
+        "state": {
+          "user": "You",
+          "machine": "Robot"
+        }
+      },
+      "step_program": {
+        "name": "Step program",
+        "state": {
+          "manuel": "Manual",
+          "petrir": "Knead",
+          "vapeur": "Steam",
+          "rissoler": "Brown",
+          "turbo": "Turbo",
+          "mixer": "Blend",
+          "smoothie": "Smoothie",
+          "sous-vide": "Sous vide",
+          "mijoter": "Slow cook",
+          "fermenter": "Ferment"
+        },
+        "state_attributes": {
+          "reverse": {
+            "name": "Reverse"
+          },
+          "accessory": {
+            "name": "Accessory",
+            "state": {
+              "blade": "Blade",
+              "whisk": "Whisk"
+            }
+          },
+          "pulses": {
+            "name": "Pulses"
+          }
+        }
+      },
+      "step_duration": {
+        "name": "Step duration"
+      },
+      "step_speed": {
+        "name": "Step speed"
+      },
+      "step_temperature": {
+        "name": "Step temperature"
+      },
+      "step_weight": {
+        "name": "Weight to measure",
+        "state_attributes": {
+          "label": {
+            "name": "Ingredient"
+          }
+        }
       },
       "current_step": {
         "name": "Current step"
@@ -138,6 +264,11 @@
             }
           }
         }
+      }
+    },
+    "image": {
+      "recipe_image": {
+        "name": "Recipe image"
       }
     }
   },

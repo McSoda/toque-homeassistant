@@ -66,7 +66,8 @@ Copier le dossier `custom_components/toque` dans le dossier `custom_components` 
 - **Robot indisponible** (toutes les entités) si aucun `state` n'est reçu en 2× le signal de vie du robot : 10 s pendant un
   travail, 60 s sinon.
 - **Mesures de la base moteur indisponibles** (température, consigne, régime, niveau de vitesse, poids, temps restant,
-  couvercle, bol, moteur, chauffe) si `link` vaut `OFFLINE` ou si `snapshotAgeMs` dépasse 5 s (ou vaut `-1`).
+  fin prévue, état, temps écoulé et durée du travail, couvercle, bol, moteur, chauffe) si `link` vaut `OFFLINE` ou si
+  `snapshotAgeMs` dépasse 5 s (ou vaut `-1`).
   L'état général, le défaut, l'écran et tout ce qui touche à la recette restent disponibles.
 
 ## Entités
@@ -79,7 +80,14 @@ Connect, `hw_version` = firmware de la carte, masquée s'il vaut 0).
 | `sensor` État (`standby`, `running`, `recipe`, `fault`) | `status` |
 | `sensor` Température, Consigne de température, Régime (tr/min), Niveau de vitesse, Poids, Temps restant | `machine`, `job` |
 | `binary_sensor` Couvercle ouvert, Bol présent, Moteur, Chauffe, Défaut (attributs `code`, `message`), Écran allumé | `machine`, `fault`, `screenOn` |
-| `sensor` Recette en cours (attribut `ingredients`), Étape (`n/N`) | `session` |
+| `sensor` Fin prévue (horodatage) | `job.remainingS` |
+| `sensor` État du travail (`starting`, `running`, `stopping`, `paused` ; attributs `kind`, `label`, `pause_reason`, `phase`, `phase_count`, `reverse`, `accessory`) | `job` |
+| `sensor` Temps écoulé, Durée du travail (en secondes) | `job.elapsedS`, `job.totalS` |
+| `sensor` Recette en cours (attribut `ingredients`), Étape (`n/N`, attribut `done_steps`) | `session` |
+| `sensor` Type d'étape (`manual`, `machine`), Attente (`user`, `machine`) | `session.step.kind`, `session.awaiting` |
+| `sensor` Programme de l'étape (attributs `reverse`, `accessory`, `pulses`), Durée (s), Vitesse et Température de l'étape | `session.step.machine` |
+| `sensor` Poids à peser (g, attribut `label`) | `session.step.weigh` |
+| `image` Image de la recette | `/recipes/{id}`, `/recipes/{id}/image` |
 | `sensor` Étape en cours, Dernière étape manuelle, Prochaine étape manuelle | `session` — état tronqué à 255 caractères, **texte complet dans l'attribut `text`** |
 | `event` Cuisine : `step`, `action_requise`, `done`, `job_done`, `fault` | `/events` |
 | Diagnostic (inactifs par défaut) : Nombre de recettes, Durée de fonctionnement, Adresse IP, Version d'Android, Firmware de la carte | `/info` |
@@ -90,7 +98,24 @@ Connect, `hw_version` = firmware de la carte, masquée s'il vaut 0).
   étape à 95 °C), 0 sans chauffe ni travail. Ce n'est pas l'écho de la base : avant ce comportement, le robot renvoyait une consigne
   ajustée pendant la montée (103 puis 97 °C pour 95 °C demandés, observé sur un robot de développement).
 
-Les attributs `ingredients` et `text` sont exclus de l'enregistreur (recorder).
+- **Réglage de l'étape** : c'est celui de la **recette**, publié avant même le lancement. Si vous en adoptez un autre sur le
+  robot (« Utiliser … »), l'API ne le montre pas ; pendant le travail, fiez-vous à la consigne, au niveau de vitesse et à
+  la durée du travail. Vitesse `0` = sans mélange, température `0` = sans chauffe. Valeurs des programmes : `manuel`,
+  `petrir`, `vapeur`, `rissoler`, `turbo`, et pour le Smart `mixer`, `smoothie`, `sous-vide`, `mijoter`, `fermenter`.
+- **Attente** : `unknown` hors recette et quand rien n'est attendu (étape machine terminée).
+- **`done_steps`** : étapes machine terminées, numérotées **à partir de 0** (l'état « Étape » part de 1).
+- **État du travail** : `unknown` sans travail. Le robot retire le travail dès qu'il est fini ou arrêté : la fin se lit dans
+  l'événement `job_done`, pas dans cet état. `kind` : `manual`, `knead`, `steam`, `toast`, `turbo`, `program` ;
+  `pause_reason` : `user`, `lid`, `safety`, vide hors pause ; `label` est le texte affiché par le robot.
+- **Fin prévue** : calculée à la réception d'un `state` (heure de réception, moins l'âge de l'instantané, plus le temps
+  restant) puis **figée** : elle ne change que si la nouvelle estimation s'écarte de plus de 5 s (durée modifiée, reprise).
+  `unknown` en pause et sans travail.
+- **Image de la recette** : demandée au début d'une recette, puis seulement quand le catalogue change (au plus une fois par
+  minute, avec `If-None-Match` : une image inchangée n'est pas retransférée). Le robot ne sert que les images **déjà en
+  cache** (`unknown` sinon) et aucune **pendant un programme** : si Home Assistant démarre ou si la recette change à ce
+  moment-là, l'image arrive à la fin du programme. Une image déjà reçue reste affichée jusqu'à la fin de la recette.
+
+Les attributs `ingredients`, `text` et `done_steps` sont exclus de l'enregistreur (recorder).
 
 « Veille » côté utilisateur = `État = standby` **et** `Écran allumé = off`.
 
@@ -128,7 +153,14 @@ des choix faits faute de précision, à confirmer.
 - **Ingrédients d'une recette détaillée.** La spec dit « format `RecipeCodec.toMap` (ingrédients groupés) » sans le
   détailler ; `toque.add_recipe_to_todo` suppose la même forme que dans `/session` (`[{group, items:[{qty, unit, name, note}]}]`)
   et accepte aussi une liste à plat.
-- **Images.** `imageUrl` et `/recipes/{id}/image` (§8) ne sont **pas encore utilisés** par l'intégration.
+- **Images.** La spec (§8) demande les images « au démarrage et à l'événement `recipes` ». L'intégration n'en demande qu'une,
+  celle de la recette en cours : au démarrage, au changement de recette et après `recipes`. Après un `503`, elle attend
+  `Retry-After` (et la fin du programme) ; après un `404`, le prochain `recipes`. Une image mise en cache par le robot sans
+  événement `recipes` n'est vue qu'à la recette suivante. `imageUrl` sert seulement à savoir si l'image existe ; l'adresse
+  appelée est construite à partir de l'identifiant.
+- **Non publié par l'API** (donc absent de Home Assistant) : recette choisie mais pas lancée, réglage adopté sur le robot,
+  détail de l'attente (peser, lancer, mixage à chaud, terminer), réglages enchaînés, ingrédients d'une étape manuelle,
+  minuteurs de cuisine.
 - **Événements rejoués.** Après une reconnexion, les événements rejoués (50 au plus) déclenchent à nouveau l'entité
   `event` ; un `job_done` ou `step` ancien peut donc être revu.
 - **Version d'API.** Seule `api: 1` est acceptée ; une autre est refusée à la configuration.

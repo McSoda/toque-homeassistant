@@ -10,6 +10,7 @@ import pytest
 from custom_components.toque.api import (
     SseParser,
     ToqueAuthError,
+    ToqueBusyError,
     ToqueClient,
     ToqueConnectionError,
     ToqueEventStream,
@@ -260,3 +261,33 @@ async def test_lower_event_id_replaces_stale_one(session, robot: FakeToque) -> N
     await stream.stop()
     assert seen == ["41", "3"]
     assert stream.last_event_id == "3"  # le compteur du robot a redémarré
+
+
+async def test_recipe_image_and_etag(session, robot: FakeToque) -> None:
+    client = make_client(session, robot)
+    image = await client.get_recipe_image("veloute-de-potiron")
+    assert (image.content, image.content_type, image.etag) == (
+        robot.image, "image/jpeg", robot.image_etag,
+    )
+    assert "If-None-Match" not in robot.requests[-1][1]
+    # inchangée : 304
+    assert await client.get_recipe_image("veloute-de-potiron", image.etag) is None
+    assert robot.requests[-1][1]["If-None-Match"] == robot.image_etag
+    assert robot.image_statuses == [200, 304]
+
+
+async def test_recipe_image_errors(session, robot: FakeToque) -> None:
+    client = make_client(session, robot)
+    robot.image_busy = 1
+    with pytest.raises(ToqueBusyError) as busy:
+        await client.get_recipe_image("veloute-de-potiron")
+    assert busy.value.retry_after == 5
+    robot.image_busy, robot.retry_after = 1, None
+    with pytest.raises(ToqueBusyError) as busy:
+        await client.get_recipe_image("veloute-de-potiron")
+    assert busy.value.retry_after is None
+    robot.image = None
+    with pytest.raises(ToqueNotFoundError):
+        await client.get_recipe_image("veloute-de-potiron")
+    with pytest.raises(ToqueAuthError):
+        await make_client(session, robot, "mauvais").get_recipe_image("veloute-de-potiron")

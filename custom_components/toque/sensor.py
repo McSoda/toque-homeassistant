@@ -28,6 +28,24 @@ PARALLEL_UPDATES = 0
 STATE_MAX = 255
 
 STATUSES = ["standby", "running", "recipe", "fault"]
+STEP_KINDS = ["manual", "machine"]
+AWAITING = ["user", "machine"]
+# Clés de `StepProgram` côté robot (les cinq dernières : Monsieur Cuisine Smart).
+STEP_PROGRAMS = [
+    "manuel",
+    "petrir",
+    "vapeur",
+    "rissoler",
+    "turbo",
+    "mixer",
+    "smoothie",
+    "sous-vide",
+    "mijoter",
+    "fermenter",
+]
+# `/state` ne publie un travail que tant qu'il n'est pas fini : `finished` et `aborted`
+# arrivent par l'événement `job_done` ; ils ne sont listés que par tolérance.
+JOB_STATES = ["starting", "running", "stopping", "paused", "finished", "aborted"]
 
 
 def _truncate(text: Any) -> str | None:
@@ -47,6 +65,59 @@ def _temperature(c: ToqueCoordinator) -> Any:
     return None if value == 0 else value
 
 
+def _lower(value: Any) -> str | None:
+    """Valeur d'énumération en minuscules ; None si absente ou vide."""
+    return str(value).lower() if value else None
+
+
+def _option(value: Any, options: list[str]) -> str | None:
+    """Valeur d'un capteur énuméré ; inconnue si le robot en annonce une nouvelle."""
+    return value if value in options else None
+
+
+def _step_setting(c: ToqueCoordinator, key: str) -> Any:
+    """Réglage de la recette pour l'étape courante (pas celui adopté sur le robot)."""
+    return dig(c.session, "step", "machine", key)
+
+
+def _step_program_attributes(c: ToqueCoordinator) -> dict[str, Any] | None:
+    if not dig(c.session, "step", "machine"):
+        return None
+    return {
+        "reverse": _step_setting(c, "reverse"),
+        "accessory": _lower(_step_setting(c, "accessory")),
+        "pulses": _step_setting(c, "pulses"),
+    }
+
+
+def _step_weight_attributes(c: ToqueCoordinator) -> dict[str, Any] | None:
+    if not dig(c.session, "step", "weigh"):
+        return None
+    return {"label": dig(c.session, "step", "weigh", "label")}
+
+
+def _step_number_attributes(c: ToqueCoordinator) -> dict[str, Any] | None:
+    if not c.session.get("active"):
+        return None
+    # Index à partir de 0, comme dans l'API.
+    return {"done_steps": c.session.get("doneSteps")}
+
+
+def _job_attributes(c: ToqueCoordinator) -> dict[str, Any] | None:
+    job = c.state.get("job")
+    if not job:
+        return None
+    return {
+        "kind": _lower(job.get("kind")),
+        "label": job.get("label"),
+        "pause_reason": _lower(job.get("pauseReason")),
+        "phase": job.get("phase"),
+        "phase_count": job.get("phaseCount"),
+        "reverse": job.get("reverse"),
+        "accessory": _lower(job.get("accessory")),
+    }
+
+
 def _step_count(c: ToqueCoordinator) -> str | None:
     s = c.session
     if not s.get("active") or s.get("stepIndex") is None or not s.get("stepCount"):
@@ -62,6 +133,7 @@ class ToqueSensorDescription(SensorEntityDescription):
     needs_fresh: bool = False
     # Texte complet en attribut quand l'état est tronqué à 255 caractères.
     full_text_fn: Callable[[ToqueCoordinator], Any] | None = None
+    attributes_fn: Callable[[ToqueCoordinator], dict[str, Any] | None] | None = None
 
 
 def _manual_text(c: ToqueCoordinator, key: str) -> Any:
@@ -125,6 +197,35 @@ SENSORS: tuple[ToqueSensorDescription, ...] = (
         value_fn=lambda c: dig(c.state, "job", "remainingS"),
     ),
     ToqueSensorDescription(
+        key="expected_end",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        needs_fresh=True,
+        value_fn=lambda c: c.job_end,
+    ),
+    ToqueSensorDescription(
+        key="job_state",
+        device_class=SensorDeviceClass.ENUM,
+        options=JOB_STATES,
+        needs_fresh=True,
+        icon="mdi:progress-clock",
+        value_fn=lambda c: _option(_lower(dig(c.state, "job", "state")), JOB_STATES),
+        attributes_fn=_job_attributes,
+    ),
+    ToqueSensorDescription(
+        key="job_elapsed_time",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        needs_fresh=True,
+        value_fn=lambda c: dig(c.state, "job", "elapsedS"),
+    ),
+    ToqueSensorDescription(
+        key="job_total_time",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        needs_fresh=True,
+        value_fn=lambda c: dig(c.state, "job", "totalS"),
+    ),
+    ToqueSensorDescription(
         key="recipe",
         icon="mdi:chef-hat",
         value_fn=lambda c: dig(c.session, "recipe", "title") if c.session.get("active") else None,
@@ -133,6 +234,55 @@ SENSORS: tuple[ToqueSensorDescription, ...] = (
         key="step_number",
         icon="mdi:stairs",
         value_fn=_step_count,
+        attributes_fn=_step_number_attributes,
+    ),
+    ToqueSensorDescription(
+        key="step_kind",
+        device_class=SensorDeviceClass.ENUM,
+        options=STEP_KINDS,
+        icon="mdi:gesture-tap",
+        value_fn=lambda c: _option(dig(c.session, "step", "kind"), STEP_KINDS),
+    ),
+    ToqueSensorDescription(
+        key="awaiting",
+        device_class=SensorDeviceClass.ENUM,
+        options=AWAITING,
+        icon="mdi:timer-sand",
+        value_fn=lambda c: _option(c.session.get("awaiting"), AWAITING),
+    ),
+    ToqueSensorDescription(
+        key="step_program",
+        device_class=SensorDeviceClass.ENUM,
+        options=STEP_PROGRAMS,
+        icon="mdi:tune",
+        value_fn=lambda c: _option(_step_setting(c, "program"), STEP_PROGRAMS),
+        attributes_fn=_step_program_attributes,
+    ),
+    ToqueSensorDescription(
+        key="step_duration",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        value_fn=lambda c: _step_setting(c, "seconds"),
+    ),
+    ToqueSensorDescription(
+        key="step_speed",
+        icon="mdi:speedometer-medium",
+        value_fn=lambda c: _step_setting(c, "speed"),
+    ),
+    ToqueSensorDescription(
+        key="step_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        # Réglage de la recette : 0 = sans chauffe (ce n'est pas une mesure).
+        value_fn=lambda c: _step_setting(c, "tempC"),
+    ),
+    ToqueSensorDescription(
+        key="step_weight",
+        device_class=SensorDeviceClass.WEIGHT,
+        native_unit_of_measurement=UnitOfMass.GRAMS,
+        icon="mdi:scale",
+        value_fn=lambda c: dig(c.session, "step", "weigh", "grams"),
+        attributes_fn=_step_weight_attributes,
     ),
     ToqueSensorDescription(
         key="current_step",
@@ -206,8 +356,8 @@ class ToqueSensor(ToqueEntity, SensorEntity):
     """Capteur générique piloté par une description."""
 
     entity_description: ToqueSensorDescription
-    # Les ingrédients et textes longs n'ont pas à encombrer la base de l'enregistreur.
-    _unrecorded_attributes = frozenset({"ingredients", "text"})
+    # Ingrédients, textes longs et listes n'ont pas à encombrer la base de l'enregistreur.
+    _unrecorded_attributes = frozenset({"ingredients", "text", "done_steps"})
 
     def __init__(self, coordinator: ToqueCoordinator, description: ToqueSensorDescription) -> None:
         super().__init__(coordinator, description.key, description.needs_fresh)
@@ -219,6 +369,8 @@ class ToqueSensor(ToqueEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
+        if (attributes := self.entity_description.attributes_fn) is not None:
+            return attributes(self.coordinator)
         fn = self.entity_description.full_text_fn
         if fn is not None:
             text = fn(self.coordinator)
