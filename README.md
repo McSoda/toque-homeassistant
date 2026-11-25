@@ -21,8 +21,8 @@ chauffe, ni la session de cuisson.
 ## Prérequis
 
 - Un **Monsieur Cuisine Connect** avec Toque **du fork** installé : prendre la
-  [**dernière release**](https://github.com/McSoda/MrCuisineVibeConnect/releases/latest) (à ce jour `v0.9.0.1`, basée sur la
-  0.9.0 de Wuki60, APK `MCC-285-Toque-0.9.0.1.apk`). Les releases du fork ne concernent que le Connect.
+  [**dernière release**](https://github.com/McSoda/MrCuisineVibeConnect/releases/latest) (à ce jour `v0.10.0.1`, basée sur la
+  0.10.0 de Wuki60, APK `MCC-285-Toque-0.10.0.1.apk`). Les releases du fork ne concernent que le Connect.
 - L'API activée sur le robot : **Réglages › Avancé**, bloc **Home Assistant** (elle est désactivée par défaut). L'écran
   affiche alors le **port** (8765 par défaut) et le **jeton**.
 - Home Assistant **2026.10** ou plus récent (version sur laquelle les tests ont été exécutés).
