@@ -2,8 +2,10 @@
 
 Intégration personnalisée (compatible [HACS](https://hacs.xyz)) pour **Toque**, l'application qui remplace celle du robot
 **Lidl Monsieur Cuisine Connect (SKMC 1200)**. Toque est le projet de
-[Wuki60](https://github.com/Wuki60/MrCuisineVibeConnect) ; cette intégration lit son API locale (HTTP + SSE,
-**lecture seule**) : elle ne pilote ni le moteur, ni la chauffe, ni la session de cuisson.
+[Wuki60](https://github.com/Wuki60/MrCuisineVibeConnect), qui **n'a pas d'API**. Cette intégration lit l'API locale
+(HTTP + SSE, **lecture seule**) ajoutée par le fork
+[McSoda/MrCuisineVibeConnect](https://github.com/McSoda/MrCuisineVibeConnect) : elle ne pilote ni le moteur, ni la
+chauffe, ni la session de cuisson.
 
 > **À lire d'abord : cette intégration ne fonctionne qu'avec le fork
 > [McSoda/MrCuisineVibeConnect](https://github.com/McSoda/MrCuisineVibeConnect).**
