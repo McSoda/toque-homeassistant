@@ -5,22 +5,24 @@ Intégration personnalisée (compatible [HACS](https://hacs.xyz)) pour **Toque**
 [Wuki60](https://github.com/Wuki60/MrCuisineVibeConnect) ; cette intégration lit son API locale (HTTP + SSE,
 **lecture seule**) : elle ne pilote ni le moteur, ni la chauffe, ni la session de cuisson.
 
-> **À lire d'abord : cette intégration ne fonctionne, pour l'instant, qu'avec le fork de développement
+> **À lire d'abord : cette intégration ne fonctionne qu'avec le fork
 > [McSoda/MrCuisineVibeConnect](https://github.com/McSoda/MrCuisineVibeConnect).**
 > L'API locale pour Home Assistant (`/api/v1`, annonce mDNS `_toque._tcp`) y a été ajoutée ; elle n'existe pas dans le
-> dépôt de Wuki60. Avec la version de Toque de Wuki60, l'intégration ne trouvera rien à lire. Le but est de proposer ces
-> modifications à Wuki60 par une *pull request* ; une fois fusionnées, l'intégration fonctionnera avec Toque « officiel »
-> et cette mention disparaîtra. Les évolutions de l'API sont décrites dans `docs/HOME_ASSISTANT_API.md` du fork.
+> dépôt de Wuki60. Avec la version de Toque de Wuki60, l'intégration ne trouvera rien à lire. L'ajout de cette API a été
+> proposé à Wuki60 ([pull request #66](https://github.com/Wuki60/MrCuisineVibeConnect/pull/66)), fermée sans fusion.
+> L'API est décrite dans
+> [`docs/HOME_ASSISTANT_API.md`](https://github.com/McSoda/MrCuisineVibeConnect/blob/main/docs/HOME_ASSISTANT_API.md) du
+> fork.
 
-*English: custom Home Assistant integration for the Toque app (by [Wuki60](https://github.com/Wuki60/MrCuisineVibeConnect)) running on the Monsieur Cuisine Connect robot. Local push, read-only. **For now it only works with the development fork [McSoda/MrCuisineVibeConnect](https://github.com/McSoda/MrCuisineVibeConnect)**, which adds the local API; a pull request to the upstream project is planned. The documentation below is in French; entity names and UI are translated in English too.*
+*English: custom Home Assistant integration for the Toque app (by [Wuki60](https://github.com/Wuki60/MrCuisineVibeConnect)) running on the Monsieur Cuisine Connect robot. Local push, read-only. **It only works with the fork [McSoda/MrCuisineVibeConnect](https://github.com/McSoda/MrCuisineVibeConnect)**, which adds the local API (install its [latest release](https://github.com/McSoda/MrCuisineVibeConnect/releases/latest), Monsieur Cuisine Connect only, then enable the API in Toque: Settings › Advanced › Home Assistant). The upstream project does not include this API. The documentation below is in French; entity names and UI are translated in English too.*
 
 ## Prérequis
 
-- Toque **du fork [McSoda/MrCuisineVibeConnect](https://github.com/McSoda/MrCuisineVibeConnect)** installé sur le robot : la
-  version la plus récente qui porte l'API est sur la branche `mc-0.8` (Toque 0.8.2.1, basée sur la 0.8.2 de Wuki60).
-  L'API est en version 1 depuis la 0.5.x ; les versions 0.5.12 et suivantes sont conseillées (flux d'événements fiabilisé),
-  avec **Réglages › Intégrations › Home Assistant** activé : l'écran du robot affiche
-  le **port** (8765 par défaut) et le **jeton**.
+- Un **Monsieur Cuisine Connect** avec Toque **du fork** installé : prendre la
+  [**dernière release**](https://github.com/McSoda/MrCuisineVibeConnect/releases/latest) (à ce jour `v0.9.0.1`, basée sur la
+  0.9.0 de Wuki60, APK `MCC-285-Toque-0.9.0.1.apk`). Les releases du fork ne concernent que le Connect.
+- L'API activée sur le robot : **Réglages › Avancé**, bloc **Home Assistant** (elle est désactivée par défaut). L'écran
+  affiche alors le **port** (8765 par défaut) et le **jeton**.
 - Home Assistant **2026.10** ou plus récent (version sur laquelle les tests ont été exécutés).
 - Le robot et Home Assistant sur le même réseau local.
 
@@ -54,7 +56,7 @@ Copier le dossier `custom_components/toque` dans le dossier `custom_components` 
 
 - Données en **temps réel** par le flux SSE (`/events`) ; reconnexion automatique avec `Last-Event-ID` (délai 1 s, doublé
   jusqu'à 30 s). Un flux qui n'envoie aucun octet (pings de 15 s compris) pendant **30 s** est considéré mort et rouvert, **sans** `Last-Event-ID` : les identifiants du robot repartent de 1 à chaque redémarrage de
-  Toque, et un identifiant plus grand lui fait ignorer tous les événements.
+  Toque, un identifiant antérieur au redémarrage n'a donc plus de sens.
 - `/state` et `/session` sont interrogés toutes les **60 s** en repli. Si le flux reste ouvert mais **muet** (plus de `state`
   au-delà du signal de vie du robot + 1 s : 6 s pendant un travail, 31 s sinon), l'intégration interroge `/state` sans
   attendre, puis à chaque réévaluation (toutes les 2 s) tant que le silence dure : le robot reste disponible même si son
@@ -67,7 +69,8 @@ Copier le dossier `custom_components/toque` dans le dossier `custom_components` 
 
 ## Entités
 
-Un appareil par robot (`sw_version` = version de Toque, `model` = SKMC 1200, `hw_version` = firmware de la carte).
+Un appareil par robot (`sw_version` = version de Toque, `model` = modèle annoncé par le robot, SKMC 1200 pour un
+Connect, `hw_version` = firmware de la carte, masquée s'il vaut 0).
 
 | Entité | Source |
 |---|---|
@@ -101,7 +104,7 @@ Les attributs `ingredients` et `text` sont exclus de l'enregistreur (recorder).
 
 ## Points où la spécification est ambiguë ou incomplète
 
-La spécification de référence est `docs/HOME_ASSISTANT_API.md` du dépôt Toque. Ce qui suit n'est pas inventé : ce sont
+La spécification de référence est `docs/HOME_ASSISTANT_API.md` du fork. Ce qui suit n'est pas inventé : ce sont
 des choix faits faute de précision, à confirmer.
 
 - **Vitesse (tr/min).** La spec liste « Vitesse (tr/min) » mais précise que `rpm` et `speed` restent à 0 moteur en marche
@@ -109,9 +112,10 @@ des choix faits faute de précision, à confirmer.
   fiable pour l'instant.
 - **Température.** Constaté sur un SKMC 1200 : `tempC` vaut 0 sous environ 37 °C puis suit la mesure pendant la chauffe (de
   37 à 95 °C observés, par paliers de 5 °C au-delà de 65 °C). L'intégration traduit ce 0 en `unknown`.
-- **Robot Smart.** Toque 0.8 prend en charge le Monsieur Cuisine Smart (SKMS 1200), mais l'API annonce encore le modèle
-  « SKMC 1200 » par défaut ; l'intégration affiche le modèle reçu. Non testé : je n'ai pas de robot Smart, on ne sait pas
-  quelles mesures (`rpm`, `tempC`) il renvoie.
+- **Robot Smart.** Toque prend en charge le Monsieur Cuisine Smart (SKMS 1200), mais le fork ne publie pas d'APK pour ce
+  robot, et celui du dépôt de Wuki60 n'a pas l'API. Dans le code du fork, `/info` annonce le modèle du robot choisi et
+  l'intégration l'affiche. Non testé : je n'ai pas de robot Smart, on ne sait pas quelles mesures (`rpm`, `tempC`) il
+  renvoie.
 - **`action_requise`.** Le tableau des entités le cite, mais le flux SSE n'a pas d'événement de ce nom. Il est **déduit** de
   `session` : émis quand `awaiting` passe à `user` (ou que l'étape change alors que `awaiting` vaut `user`).
 - **Fraîcheur.** `snapshotAgeMs` est évalué à la réception du `state`, il n'est pas augmenté du temps écoulé depuis ; le

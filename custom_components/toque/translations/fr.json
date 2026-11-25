@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Robot Toque",
-        "description": "Adresse du robot (Réglages › Intégrations › Home Assistant dans Toque) et jeton affiché sur son écran.",
+        "description": "Adresse du robot (Réglages › Avancé › Home Assistant dans Toque) et jeton affiché sur son écran.",
         "data": {
           "host": "Hôte",
           "port": "Port",
