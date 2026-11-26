@@ -24,9 +24,9 @@ def zeroconf(host: str, port: int) -> ZeroconfServiceInfo:
         ip_address=host,
         ip_addresses=[host],
         hostname="toque.local.",
-        name="Monsieur Cuisine._toque._tcp.local.",
+        name="Monsieur Cuisine._toque-ha._tcp.local.",
         port=port,
-        type="_toque._tcp.local.",
+        type="_toque-ha._tcp.local.",
         properties={"api": "1", "id": "toque-test0001", "version": "0.5.5", "name": "Monsieur Cuisine"},
     )
 

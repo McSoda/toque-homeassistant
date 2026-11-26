@@ -2,14 +2,15 @@
 
 Intégration personnalisée (compatible [HACS](https://hacs.xyz)) pour **Toque**, l'application qui remplace celle du robot
 **Lidl Monsieur Cuisine Connect (SKMC 1200)**. Toque est le projet de
-[Wuki60](https://github.com/Wuki60/MrCuisineVibeConnect), qui **n'a pas d'API**. Cette intégration lit l'API locale
+[Wuki60](https://github.com/Wuki60/MrCuisineVibeConnect), qui **n'a pas cette API** (depuis la 0.10.0, il propose l'API
+« Compagnon », différente, que cette intégration ne lit pas). Cette intégration lit l'API locale
 (HTTP + SSE, **lecture seule**) ajoutée par le fork
 [McSoda/MrCuisineVibeConnect](https://github.com/McSoda/MrCuisineVibeConnect) : elle ne pilote ni le moteur, ni la
 chauffe, ni la session de cuisson.
 
 > **À lire d'abord : cette intégration ne fonctionne qu'avec le fork
 > [McSoda/MrCuisineVibeConnect](https://github.com/McSoda/MrCuisineVibeConnect).**
-> L'API locale pour Home Assistant (`/api/v1`, annonce mDNS `_toque._tcp`) y a été ajoutée ; elle n'existe pas dans le
+> L'API locale pour Home Assistant (`/api/v1`, annonce mDNS `_toque-ha._tcp`) y a été ajoutée ; elle n'existe pas dans le
 > dépôt de Wuki60. Avec la version de Toque de Wuki60, l'intégration ne trouvera rien à lire. L'ajout de cette API a été
 > proposé à Wuki60 ([pull request #66](https://github.com/Wuki60/MrCuisineVibeConnect/pull/66)), fermée sans fusion.
 > L'API est décrite dans
@@ -21,8 +22,8 @@ chauffe, ni la session de cuisson.
 ## Prérequis
 
 - Un **Monsieur Cuisine Connect** avec Toque **du fork** installé : prendre la
-  [**dernière release**](https://github.com/McSoda/MrCuisineVibeConnect/releases/latest) (à ce jour `v0.10.0.1`, basée sur la
-  0.10.0 de Wuki60, APK `MCC-285-Toque-0.10.0.1.apk`). Les releases du fork ne concernent que le Connect.
+  [**dernière release**](https://github.com/McSoda/MrCuisineVibeConnect/releases/latest) (à ce jour `v0.11.0.1`, basée sur la
+  0.11.0 de Wuki60, APK `MCC-285-Toque-0.11.0.1.apk`). Les releases du fork ne concernent que le Connect.
 - L'API activée sur le robot : **Réglages › Avancé**, bloc **Home Assistant** (elle est désactivée par défaut). L'écran
   affiche alors le **port** (8765 par défaut) et le **jeton**.
 - Home Assistant **2026.10** ou plus récent (version sur laquelle les tests ont été exécutés).
@@ -43,8 +44,10 @@ Copier le dossier `custom_components/toque` dans le dossier `custom_components` 
 
 **Réglages › Appareils et services › Ajouter une intégration › Toque.**
 
-- **Découverte automatique** : le robot annonce `_toque._tcp` (mDNS). Il apparaît parmi les appareils découverts ;
-  il reste à saisir le **jeton**.
+- **Découverte automatique** : le robot annonce `_toque-ha._tcp` (mDNS). Il apparaît parmi les appareils découverts ;
+  il reste à saisir le **jeton**. Il faut la version `0.11.0.1` ou plus récente du fork : les précédentes annonçaient
+  `_toque._tcp`, nom que le Toque de Wuki60 utilise depuis la 0.11.0 pour son API Compagnon. Avec une version
+  précédente, utiliser la saisie manuelle.
 - **Saisie manuelle** : hôte (adresse IP du robot), port, jeton. L'adresse est validée par `GET /info` (public), le jeton
   par `GET /state`.
 - Si le jeton est régénéré sur le robot, Home Assistant demande de le ressaisir (réauthentification).
